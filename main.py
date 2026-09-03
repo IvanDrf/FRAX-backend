@@ -1,9 +1,10 @@
 from typing import Final
 
-from api.frax_handlers import frax_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
+
+from api.frax_handlers import frax_router
 
 STATIC_PATH: Final[str] = "../FRAX-frontend/static"
 

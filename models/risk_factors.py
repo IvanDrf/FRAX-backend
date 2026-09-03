@@ -9,7 +9,7 @@ RISK_FACTORS: Final = [
         "factor_category": "binary",
         "image_key": "fracture_history.jpg",
         "video_key": "fracture_explanation.mp4",
-        "likes": [2, 3],
+        "likes": [2, 3, 5],
         "publication_status": "published",
     },
     {
@@ -38,7 +38,7 @@ RISK_FACTORS: Final = [
 
 
 def is_risk_factor_published(risk_factor: dict) -> bool:
-    return risk_factor.get("publication_status", False) is True
+    return risk_factor.get("publication_status", False) == "published"
 
 
 def is_risk_factor_weight_bigger(risk_factor: dict, risk_factor_weight: float) -> bool:
