@@ -5,7 +5,7 @@ RISK_FACTORS: Final = [
         "factor_id": 1,
         "factor_name": "Предыдущие переломы",
         "factor_description": "Наличие переломов увеличивает риск повторных переломов",
-        "factor_weight": 1.5,  # множитель риска
+        "factor_weight": 1.5,
         "factor_category": "binary",
         "image_key": "fracture_history.jpg",
         "video_key": "fracture_explanation.mp4",
@@ -35,3 +35,11 @@ RISK_FACTORS: Final = [
         "publication_status": "draft",
     },
 ]
+
+
+def is_risk_factor_published(risk_factor: dict) -> bool:
+    return risk_factor.get("publication_status", False) is True
+
+
+def is_risk_factor_weight_bigger(risk_factor: dict, risk_factor_weight: float) -> bool:
+    return risk_factor.get("factor_weight", 0) > risk_factor_weight

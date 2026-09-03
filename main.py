@@ -1,5 +1,6 @@
 from typing import Final
 
+from api.frax_handlers import frax_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
@@ -7,7 +8,8 @@ from uvicorn import run
 STATIC_PATH: Final[str] = "../FRAX-frontend/static"
 
 app = FastAPI()
-app.mount(STATIC_PATH, StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_PATH), name="static")
+app.include_router(frax_router)
 
 
 if __name__ == "__main__":
