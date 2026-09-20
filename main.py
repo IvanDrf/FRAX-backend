@@ -4,13 +4,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from uvicorn import run
 
-from api.frax_handlers import frax_router
+from api.risk_factors import risk_factor_router
 
-STATIC_PATH: Final[str] = "../FRAX-frontend/static"
+STATIC_PATH: Final[str] = "./static"
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=STATIC_PATH), name="static")
-app.include_router(frax_router)
+app.include_router(risk_factor_router)
 
 
 if __name__ == "__main__":

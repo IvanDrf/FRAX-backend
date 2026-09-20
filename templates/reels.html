@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Лента FRAX — {{ factor.factor_name }}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+
+<body>
+  <div class="phone-frame">
+    <section class="feed-screen">
+      <video class="feed-video" autoplay muted loop playsinline src="{{ factor.video_url }}"></video>
+      <div class="bottom-gradient"></div>
+
+      <div class="top-left-badge">
+        <span class="frax-badge">FRAX</span>
+      </div>
+
+      <div class="action-row">
+        <div class="interest-mark">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path
+              d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
+          </svg>
+          <span class="likes-count">{{ factor.likes|length }}</span>
+        </div>
+
+        <dl class="action-fields">
+          <div>
+            <dt>Вес</dt>
+            <dd>{{ factor.factor_weight }}</dd>
+          </div>
+          <div>
+            <dt>Тип</dt>
+            <dd>{{ factor.factor_category }}</dd>
+          </div>
+          <div>
+            <dt>Распр.</dt>
+            <dd>{{ factor.factor_prevalence }}%</dd>
+          </div>
+        </dl>
+
+        <a class="next-mark" href="/factor/{{ factor.factor_id }}?next=true" aria-label="Следующий фактор">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="data-layer">
+        <h1 class="factor-title">{{ factor.factor_name }}</h1>
+
+        <div class="factor-description">
+          <input type="checkbox" id="desc-toggle-{{ factor.factor_id }}" class="desc-toggle" />
+          <p class="description-text">{{ factor.factor_description }}</p>
+          <label for="desc-toggle-{{ factor.factor_id }}" class="desc-label"></label>
+        </div>
+      </div>
+    </section>
+
+    <nav class="tab-panel">
+      <a class="tab-button active" href="/reels">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none" />
+        </svg>
+        Лента
+      </a>
+      <a class="tab-button" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+        Каталог
+      </a>
+      <a class="tab-button" href="/add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+        Добавление
+      </a>
+    </nav>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  file_storage:
+    container_name: "file_storage"
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_PORT}:9000" 
+      - "${MINIO_WEB_PORT}:9001" 
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD} 
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+    restart: always
+    networks:
+      - frax_network
+    
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:lts
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      - "${PORTAINER_PORT}:9000"
+    networks:
+      - frax_network
+
+
+volumes:
+  minio_data:
+  portainer_data:
+
+networks:
+  frax_network:
+    name: frax_network
+    driver: bridge

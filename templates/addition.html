@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Добавление фактора риска FRAX</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+
+<body>
+  <div class="phone-frame">
+    <main class="tabbed-page">
+      <header class="page-header">
+        <span class="frax-badge">FRAX</span>
+        <h1 class="page-title">Новый фактор</h1>
+      </header>
+
+      <section class="minio-block">
+        <h2>Изображение</h2>
+        <img class="minio-preview" src="{{ factor.image_url }}" alt="{{ factor.factor_name }}" />
+        <label class="file-field-custom">
+          <input type="file" accept="image/*" aria-label="Изображение" />
+          <span class="file-button">Выбрать файл</span>
+          <span class="file-name">Файл не выбран</span>
+        </label>
+      </section>
+
+      <section class="minio-block">
+        <h2>Видео</h2>
+        <video class="minio-preview" src="{{ factor.video_url }}" controls preload="metadata" playsinline></video>
+        <label class="file-field-custom">
+          <input type="file" accept="video/*" aria-label="Видео" />
+          <span class="file-button">Выбрать файл</span>
+          <span class="file-name">Файл не выбран</span>
+        </label>
+      </section>
+
+      <label class="field-label" for="factor_name">Название фактора</label>
+      <input class="factor-field" id="factor_name" name="factor_name" type="text" value="{{ factor.factor_name }}" />
+
+      <label class="field-label" for="factor_description">Описание фактора</label>
+      <textarea class="factor-field" id="factor_description"
+        name="factor_description">{{ factor.factor_description }}</textarea>
+
+      <label class="field-label" for="factor_weight">Вес фактора</label>
+      <input class="factor-field" id="factor_weight" name="factor_weight" type="number" step="0.1"
+        value="{{ factor.factor_weight }}" />
+
+      <label class="field-label" for="factor_category">Категория фактора</label>
+      <select class="factor-field" id="factor_category" name="factor_category">
+        <option value="binary" {% if factor.factor_category=='binary' %}selected{% endif %}>Бинарный (да/нет)</option>
+        <option value="numeric" {% if factor.factor_category=='numeric' %}selected{% endif %}>Числовой</option>
+        <option value="categorical" {% if factor.factor_category=='categorical' %}selected{% endif %}>Категориальный
+        </option>
+      </select>
+
+      <label class="field-label" for="factor_prevalence">Распространённость фактора, %</label>
+      <input class="factor-field" id="factor_prevalence" name="factor_prevalence" type="number" step="1" min="0"
+        max="100" value="{{ factor.factor_prevalence }}" />
+
+      <button class="no-save-button" type="button" disabled>Временно недоступно</button>
+    </main>
+
+    <nav class="tab-panel">
+      <a class="tab-button" href="/reels">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M10 8l6 4-6 4V8z" fill="currentColor" stroke="none" />
+        </svg>
+        Лента
+      </a>
+      <a class="tab-button" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+        Каталог
+      </a>
+      <a class="tab-button active" href="/add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+        Добавление
+      </a>
+    </nav>
+  </div>
+</body>
+
+</html>
