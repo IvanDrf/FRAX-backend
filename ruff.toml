@@ -1,1 +1,2 @@
 line-length = 140
+exclude = ["alembic"]

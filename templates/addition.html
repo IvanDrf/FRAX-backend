@@ -13,53 +13,82 @@
     <main class="tabbed-page">
       <header class="page-header">
         <span class="frax-badge">FRAX</span>
-        <h1 class="page-title">Новый фактор</h1>
+        <h1 class="page-title">
+          {% if factor %}Публикация фактора{% else %}Новый фактор{% endif %}
+        </h1>
       </header>
 
-      <section class="minio-block">
-        <h2>Изображение</h2>
-        <img class="minio-preview" src="{{ factor.image_url }}" alt="{{ factor.factor_name }}" />
-        <label class="file-field-custom">
-          <input type="file" accept="image/*" aria-label="Изображение" />
-          <span class="file-button">Выбрать файл</span>
-          <span class="file-name">Файл не выбран</span>
-        </label>
-      </section>
+      {% if not factor %}
+      <form method="post" action="/add">
+        <section class="minio-block">
+          <h2>Изображение</h2>
+          <img class="minio-preview" alt="Изображение по умолчанию" src="/static/img/default.png" />
+          <label class="file-field-custom">
+            <input type="file" accept="image/*" aria-label="Изображение" />
+            <span class="file-button">Выбрать файл</span>
+            <span class="file-name">Файл не выбран</span>
+          </label>
+        </section>
 
-      <section class="minio-block">
-        <h2>Видео</h2>
-        <video class="minio-preview" src="{{ factor.video_url }}" controls preload="metadata" playsinline></video>
-        <label class="file-field-custom">
-          <input type="file" accept="video/*" aria-label="Видео" />
-          <span class="file-button">Выбрать файл</span>
-          <span class="file-name">Файл не выбран</span>
-        </label>
-      </section>
+        <section class="minio-block">
+          <h2>Видео</h2>
+          <video class="minio-preview" controls preload="metadata" playsinline src="/static/video/default.mp4"></video>
+          <label class="file-field-custom">
+            <input type="file" accept="video/*" aria-label="Видео" />
+            <span class="file-button">Выбрать файл</span>
+            <span class="file-name">Файл не выбран</span>
+          </label>
+        </section>
 
-      <label class="field-label" for="factor_name">Название фактора</label>
-      <input class="factor-field" id="factor_name" name="factor_name" type="text" value="{{ factor.factor_name }}" />
+        <label class="field-label" for="name">Название фактора</label>
+        <input class="factor-field" id="name" name="name" type="text" placeholder="Например, Курение" required />
 
-      <label class="field-label" for="factor_description">Описание фактора</label>
-      <textarea class="factor-field" id="factor_description"
-        name="factor_description">{{ factor.factor_description }}</textarea>
+        <button class="next-button" type="submit">Далее</button>
+      </form>
+      {% endif %}
 
-      <label class="field-label" for="factor_weight">Вес фактора</label>
-      <input class="factor-field" id="factor_weight" name="factor_weight" type="number" step="0.1"
-        value="{{ factor.factor_weight }}" />
+      {% if factor %}
+      <form method="post" action="/add/publish">
+        <section class="minio-block">
+          <h2>Изображение</h2>
+          <img class="minio-preview" src="{{ factor.image_url or '/static/img/default.png' }}"
+            alt="{{ factor.name }}" />
+        </section>
 
-      <label class="field-label" for="factor_category">Категория фактора</label>
-      <select class="factor-field" id="factor_category" name="factor_category">
-        <option value="binary" {% if factor.factor_category=='binary' %}selected{% endif %}>Бинарный (да/нет)</option>
-        <option value="numeric" {% if factor.factor_category=='numeric' %}selected{% endif %}>Числовой</option>
-        <option value="categorical" {% if factor.factor_category=='categorical' %}selected{% endif %}>Категориальный
-        </option>
-      </select>
+        <section class="minio-block">
+          <h2>Видео</h2>
+          <video class="minio-preview" src="{{ factor.video_url or '/static/video/default.mp4' }}" controls
+            preload="metadata" playsinline></video>
+        </section>
 
-      <label class="field-label" for="factor_prevalence">Распространённость фактора, %</label>
-      <input class="factor-field" id="factor_prevalence" name="factor_prevalence" type="number" step="1" min="0"
-        max="100" value="{{ factor.factor_prevalence }}" />
+        <input type="hidden" name="name" value="{{ factor.name }}" />
+        <input type="hidden" name="image_url" value="{{ factor.image_url or '/static/img/default.png' }}" />
+        <input type="hidden" name="video_url" value="{{ factor.video_url or '/static/video/default.mp4' }}" />
 
-      <button class="no-save-button" type="button" disabled>Временно недоступно</button>
+        <label class="field-label" for="description">Краткое описание фактора</label>
+        <textarea class="factor-field" id="description" name="description" required
+          placeholder="Краткое описание фактора риска">{{ factor.description }}</textarea>
+
+        <label class="field-label" for="weight">Вес фактора</label>
+        <input class="factor-field" id="weight" name="weight" type="number" step="0.1" min="0" max="2"
+          value="{{ factor.weight }}" required />
+
+        <label class="field-label" for="prevalence">Распространённость фактора, %</label>
+        <input class="factor-field" id="prevalence" name="prevalence" type="number" step="1" min="0" max="100"
+          value="{{ factor.prevalence or 0 }}" required />
+
+        <label class="field-label" for="category">Категория фактора</label>
+        <select class="factor-field" id="category" name="category" required>
+          <option value="Бинарный" {% if factor.category.value=='Бинарный' %}selected{% endif %}>Бинарный (да/нет)
+          </option>
+          <option value="Числовой" {% if factor.category.value=='Числовой' %}selected{% endif %}>Числовой</option>
+          <option value="Категориальный" {% if factor.category.value=='Категориальный' %}selected{% endif %}>
+            Категориальный</option>
+        </select>
+
+        <button class="next-button" type="submit">Опубликовать</button>
+      </form>
+      {% endif %}
     </main>
 
     <nav class="tab-panel">

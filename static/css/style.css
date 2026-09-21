@@ -31,7 +31,7 @@ body {
   margin: 0 auto;
   background: var(--frax-bg);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .tab-panel {
@@ -460,15 +460,20 @@ textarea.factor-field {
 }
 
 select.factor-field {
-  appearance: none;
-  -webkit-appearance: none;
+  /* appearance: none; */
+  /* -webkit-appearance: none; */
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 16px center;
   background-size: 16px;
   padding-right: 40px;
   cursor: pointer;
-  border-radius: var(--frax-radius);
+  border-radius: 12px;
+  /* было var(--frax-radius) = 50px */
+  position: relative;
+  /* новое */
+  z-index: 100;
+  /* новое — выше кнопки и панели вкладок */
 }
 
 .minio-block {
@@ -715,10 +720,10 @@ video.minio-preview {
   gap: 10px;
 }
 
+/* —— карточка: ссылка + кнопка удаления —— */
 .factor-card {
-  display: block;
-  text-decoration: none;
-  color: inherit;
+  display: flex;
+  flex-direction: column;
   background: var(--frax-white);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -727,9 +732,48 @@ video.minio-preview {
 }
 
 .factor-card:hover {
-  background: var(--hover-light);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
+}
+
+.factor-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.delete-form {
+  margin-top: auto;
+  padding: 0 10px 10px;
+}
+
+.delete-button {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--frax-white);
+  border: 1px solid var(--frax-red);
+  color: var(--frax-red);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--frax-radius);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.delete-button:hover {
+  background: var(--frax-red);
+  color: var(--frax-white);
+  border-color: var(--frax-red);
+}
+
+.empty-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray);
+  padding: 24px 0;
 }
 
 .card-image {

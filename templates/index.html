@@ -24,24 +24,15 @@
         <div class="slider-header">
           <label for="risk_factor_weight">Вес фактора</label>
           <output class="slider-value" for="risk_factor_weight">
-            {% if risk_factor_weight != "" %}{{ risk_factor_weight }}{% else %}0.0{% endif %}
+            {% if risk_factor_weight is not none %}{{ risk_factor_weight }}{% else %}0.0{% endif %}
           </output>
         </div>
 
         <div class="slider-wrapper">
           <input type="range" id="risk_factor_weight" name="risk_factor_weight" min="0" max="2" step="0.1"
-            value="{% if risk_factor_weight != '' %}{{ risk_factor_weight }}{% else %}0{% endif %}" list="weight-marks"
+            value="{% if risk_factor_weight is not none %}{{ risk_factor_weight }}{% else %}0{% endif %}"
             aria-label="Фильтр по весу фактора" />
         </div>
-
-        <datalist id="weight-marks">
-          <option value="0" label="0"></option>
-          <option value="2" label="2"></option>
-          <option value="4" label="4"></option>
-          <option value="6" label="6"></option>
-          <option value="8" label="8"></option>
-          <option value="10" label="10"></option>
-        </datalist>
 
         <div class="slider-marks">
           <span>0</span>
@@ -52,20 +43,32 @@
       </form>
 
       <div class="factors-grid">
-        {% for factor in risk_factors %}
-        <a class="factor-card" href="/factor/{{ factor.factor_id }}">
-          <img class="card-image" src="{{ factor.image_url }}" alt="{{ factor.factor_name }}" />
-          <div class="card-body">
-            <h2>{{ factor.factor_name }}</h2>
-            <div class="card-footer">
-              <span>Лайки <strong>{{ factor.likes|length }}</strong></span>
-              <span>Вес <strong>{{ factor.factor_weight }}</strong></span>
-              <span>Распр. <strong>{{ factor.factor_prevalence }}%</strong></span>
+        {% for i in range(risk_factors|length) %}
+        <div class="factor-card">
+          <a class="factor-card-link" href="/factor/{{ risk_factors[i].id }}">
+            <img class="card-image" src="{{ risk_factors[i].image_url or '/static/img/default.png' }}"
+              alt="{{ risk_factors[i].name }}" />
+            <div class="card-body">
+              <h2>{{ risk_factors[i].name }}</h2>
+              <div class="card-footer">
+                <span>Лайки <strong>{{ likes_count[i] or 0 }}</strong></span>
+                <span>Вес <strong>{{ risk_factors[i].weight }}</strong></span>
+                <span>Распр. <strong>{{ risk_factors[i].prevalence or 0 }}%</strong></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+
+          <form class="delete-form" method="post" action="/factor/delete">
+            <input type="hidden" name="factor_id" value="{{ risk_factors[i].id }}" />
+            <button type="submit" class="delete-button" aria-label="Удалить фактор">Удалить</button>
+          </form>
+        </div>
         {% endfor %}
       </div>
+
+      {% if not risk_factors %}
+      <p class="empty-hint">Нет опубликованных факторов риска.</p>
+      {% endif %}
     </main>
 
     <nav class="tab-panel">
