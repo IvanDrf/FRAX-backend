@@ -12,8 +12,6 @@ from models import Like, RiskFactor
 from models.risk_factor import FactorCategory, PublicationStatus
 
 TEMPLATES_PATH: Final[str] = "./templates"
-DEFAULT_IMAGE: Final[str] = "default.png"
-DEFAULT_VIDEO: Final[str] = "default.mp4"
 
 risk_factor_router = APIRouter(tags=["frax"])
 templates = Jinja2Templates(TEMPLATES_PATH)
@@ -49,7 +47,7 @@ async def get_risk_factors(request: Request, session: Annotated[AsyncSession, De
 
 @risk_factor_router.post("/factor/delete")
 async def delete_risk_factor(session: Annotated[AsyncSession, Depends(get_db)], factor_id: Annotated[int, Form()]):
-    stmt = "UPDATE risk_factors SET publication_status = :new_status WHERE id = :id"
+    stmt = "UPDATE risk_faАctors SET publication_status = :new_status WHERE id = :id"
 
     await session.execute(text(stmt), {"new_status": PublicationStatus.DELETED.value, "id": factor_id})
     await session.commit()

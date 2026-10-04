@@ -749,24 +749,25 @@ video.minio-preview {
 
 .delete-button {
   width: 100%;
-  padding: 8px 12px;
-  background: var(--frax-white);
-  border: 1px solid var(--frax-red);
-  color: var(--frax-red);
+  background: var(--frax-red);
+  color: var(--frax-white);
+  border: 2px solid var(--frax-red);
+  padding: 12px 16px;
   font: inherit;
-  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  border-radius: var(--frax-radius);
+  font-size: 11px;
   cursor: pointer;
+  border-radius: var(--frax-radius);
   transition: all 0.3s;
 }
 
 .delete-button:hover {
-  background: var(--frax-red);
-  color: var(--frax-white);
-  border-color: var(--frax-red);
+  background: var(--hover-red);
+  border-color: var(--hover-red);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
 }
 
 .empty-hint {
