@@ -1,16 +1,22 @@
-from typing import Final
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from uvicorn import run
 
 from api.risk_factors import risk_factor_router
+from api.users import user_router
+from db.minio import minio_client
 
-STATIC_PATH: Final[str] = "./static"
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory=STATIC_PATH), name="static")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await minio_client.close_session()
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(risk_factor_router)
+app.include_router(user_router)
 
 
 if __name__ == "__main__":

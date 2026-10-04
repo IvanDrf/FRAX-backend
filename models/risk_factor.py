@@ -25,10 +25,10 @@ class RiskFactor(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     weight: Mapped[float] = mapped_column(Float, default=1, nullable=False)
-    prevalence: Mapped[int] = mapped_column(Integer, nullable=True)
+    prevalence: Mapped[int | None] = mapped_column(Integer, nullable=True)
     category: Mapped[FactorCategory] = mapped_column(
         PostgreSQLEnum(
             FactorCategory,
@@ -52,7 +52,7 @@ class RiskFactor(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.now(timezone(offset=timedelta(hours=3))), nullable=False
     )
-    formated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    formated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True, default=None)
 
-    image_url: Mapped[str | None] = mapped_column(String(255), nullable=False)
-    video_url: Mapped[str | None] = mapped_column(String(255), nullable=False)
+    image_url: Mapped[str] = mapped_column(String(255), nullable=False)
+    video_url: Mapped[str] = mapped_column(String(255), nullable=False)

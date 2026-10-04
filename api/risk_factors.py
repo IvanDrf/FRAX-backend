@@ -1,24 +1,35 @@
+from asyncio import gather
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Final
+from io import BytesIO
+from pathlib import Path
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
+from miniopy_async.api import Minio
 from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.minio import get_minio_client
 from db.session import get_db
 from models import Like, RiskFactor
-from models.risk_factor import FactorCategory, PublicationStatus
-
-TEMPLATES_PATH: Final[str] = "./templates"
-
-risk_factor_router = APIRouter(tags=["frax"])
-templates = Jinja2Templates(TEMPLATES_PATH)
+from models.risk_factor import PublicationStatus
+from schemas import CreateRiskFactorSchema
+from utils.name_gen import generate_file_name
 
 
-@risk_factor_router.get("/")
-async def get_risk_factors(request: Request, session: Annotated[AsyncSession, Depends(get_db)], risk_factor_weight: float | None = None):
+def get_user_id() -> int:
+    return 1
+
+
+risk_factor_router = APIRouter(prefix="/api", tags=["frax"])
+
+
+@risk_factor_router.get("/factors")
+async def get_risk_factors(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[int, Depends(get_user_id)],
+    risk_factor_weight: float | None = None,
+):
     stmt = (
         select(RiskFactor, func.count(Like.id))
         .outerjoin_from(RiskFactor, Like, RiskFactor.id == Like.risk_factor_id)
@@ -31,33 +42,28 @@ async def get_risk_factors(request: Request, session: Annotated[AsyncSession, De
     stmt = stmt.group_by(RiskFactor.id)
 
     res = await session.execute(stmt)
-    risk_factors = []
-    likes = []
+    result: list[dict[str, Any]] = []
 
     for row in res:
-        risk_factors.append(row[0])
-        likes.append(row[1])
+        result.append({"risk_factor": row[0], "likes": row[1], "is_creator": row[0].creator_id == user_id})
 
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={"risk_factors": risk_factors, "risk_factor_weight": risk_factor_weight, "likes_count": likes},
-    )
+    return result
 
 
-@risk_factor_router.post("/factor/delete")
-async def delete_risk_factor(session: Annotated[AsyncSession, Depends(get_db)], factor_id: Annotated[int, Form()]):
-    stmt = "UPDATE risk_faАctors SET publication_status = :new_status WHERE id = :id"
+@risk_factor_router.delete("/factors/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_risk_factor(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[int, Depends(get_user_id)],
+    factor_id: Annotated[int, Query()],
+):
+    stmt = "UPDATE risk_faАctors SET publication_status = :new_status WHERE id = :id AND creator_id = :creator_id"
 
-    await session.execute(text(stmt), {"new_status": PublicationStatus.DELETED.value, "id": factor_id})
+    await session.execute(text(stmt), {"new_status": PublicationStatus.DELETED.value, "id": factor_id, "creator_id": user_id})
     await session.commit()
 
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
-
-@risk_factor_router.get("/factor/{factor_id}")
+@risk_factor_router.get("/factors/{factor_id}")
 async def get_risk_factor_info(
-    request: Request,
     factor_id: int,
     session: Annotated[AsyncSession, Depends(get_db)],
     next_video: Annotated[bool, Query(alias="next")] = False,
@@ -85,17 +91,12 @@ async def get_risk_factor_info(
     if res is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти фактор риска")
 
-    factor, likes = res
-
-    return templates.TemplateResponse(
-        request=request,
-        name="reels.html",
-        context={"factor": factor, "likes_count": likes},
-    )
+    risk_factor, likes = res
+    return {"risk_factor": risk_factor, "likes": likes}
 
 
-@risk_factor_router.get("/reels")
-async def get_feed(request: Request, session: Annotated[AsyncSession, Depends(get_db)]):
+@risk_factor_router.get("factors/reels")
+async def get_feed(session: Annotated[AsyncSession, Depends(get_db)]):
     stmt = (
         select(RiskFactor, func.count(Like.id))
         .outerjoin_from(RiskFactor, Like, RiskFactor.id == Like.risk_factor_id)
@@ -109,30 +110,51 @@ async def get_feed(request: Request, session: Annotated[AsyncSession, Depends(ge
     if res is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти фактор риска")
 
-    factor, likes = res
-    return templates.TemplateResponse(request=request, name="reels.html", context={"factor": factor, "likes_count": likes})
+    risk_factor, likes = res
+    return {"risk_factor": risk_factor, "likes": likes}
 
 
-@risk_factor_router.get("/add")
-async def get_draft_factor(request: Request, session: Annotated[AsyncSession, Depends(get_db)], user_id: int = 1):
+@risk_factor_router.get("factors/draft")
+async def get_draft_factor(session: Annotated[AsyncSession, Depends(get_db)], user_id: Annotated[int, Depends(get_user_id)]):
     stmt = (
         select(RiskFactor).where(and_(RiskFactor.creator_id == user_id, RiskFactor.publication_status == PublicationStatus.DRAFT)).limit(1)
     )
 
     res = await session.execute(stmt)
-    factor = res.scalar_one_or_none()
+    risk_factor = res.scalar_one_or_none()
+    if risk_factor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти черновик")
 
-    return templates.TemplateResponse(request=request, name="addition.html", context={"factor": factor})
+    return {"risk_factor": risk_factor}
 
 
-@risk_factor_router.post("/add")
+BUCKET_NAME = "frax-bucket"
+
+
+@risk_factor_router.post("factors/draft", status_code=status.HTTP_201_CREATED)
 async def create_draft_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
-    name: Annotated[str, Form()],
-    user_id: int = 1,
-    image_url: Annotated[str | None, Form()] = None,
-    video_url: Annotated[str | None, Form()] = None,
+    minio_client: Annotated[Minio, Depends(get_minio_client)],
+    user_id: Annotated[int, Depends(get_user_id)],
+    risk_factor: CreateRiskFactorSchema,
+    image: UploadFile,
+    video: UploadFile,
 ):
+    if not image.content_type or not image.filename or not image.content_type.startswith("/image"):
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="файл image не является изображением")
+
+    if not video.content_type or not video.filename or not video.content_type.startswith("/video"):
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail="файл vide не является видео")
+
+    image_name, video_name = generate_file_name(Path(image.filename).suffix), generate_file_name(Path(video.filename).suffix)
+    image_content, video_content = await gather(*[image.read(), video.read()])
+    await gather(
+        *[
+            minio_client.append_object(BUCKET_NAME, object_name=image_name, data=BytesIO(image_content), length=len(image_content)),
+            minio_client.append_object(BUCKET_NAME, object_name=video_name, data=BytesIO(video_content), length=len(video_content)),
+        ]
+    )
+
     stmt = (
         select(RiskFactor).where(and_(RiskFactor.creator_id == user_id, RiskFactor.publication_status == PublicationStatus.DRAFT)).limit(1)
     )
@@ -140,30 +162,35 @@ async def create_draft_factor(
     res = await session.execute(stmt)
     factor = res.scalar_one_or_none()
     if factor:
-        factor.name = name
-        factor.image_url = image_url
-        factor.video_url = video_url
+        factor.name = risk_factor.name
+        factor.description = risk_factor.description
+        factor.weight = risk_factor.weight
+        factor.prevalence = risk_factor.prevalence
+        factor.category = risk_factor.category
         factor.creator_id = user_id
+        factor.image_url = image_name
+        factor.video_url = video_name
     else:
-        factor = RiskFactor(name=name, image_url=image_url, video_url=video_url, creator_id=user_id)
+        factor = RiskFactor(
+            name=risk_factor.name,
+            description=risk_factor.description,
+            weight=risk_factor.weight,
+            prevalence=risk_factor.prevalence,
+            category=risk_factor.category,
+            creator_id=user_id,
+            image_url=image_name,
+            video_url=video_name,
+        )
         session.add(factor)
 
     await session.commit()
+    return factor
 
-    return RedirectResponse("/add", status_code=status.HTTP_303_SEE_OTHER)
 
-
-@risk_factor_router.post("/add/publish")
+@risk_factor_router.put("factors/draft", status_code=status.HTTP_200_OK)
 async def publish_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
-    name: Annotated[str, Form()],
-    description: Annotated[str, Form()],
-    weight: Annotated[float, Form()],
-    prevalence: Annotated[int, Form()],
-    category: Annotated[str, Form()],
-    image_url: Annotated[str | None, Form()] = None,
-    video_url: Annotated[str | None, Form()] = None,
-    user_id: int = 1,
+    user_id: Annotated[int, Depends(get_user_id)],
 ):
     stmt = select(RiskFactor).where(
         and_(
@@ -172,20 +199,38 @@ async def publish_factor(
         )
     )
     res = await session.execute(stmt)
-    factor = res.scalar_one_or_none()
+    risk_factor = res.scalar_one_or_none()
 
-    if factor is None:
-        raise HTTPException(status_code=404, detail="Черновик не найден")
+    if risk_factor is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти черновик")
 
-    factor.name = name
-    factor.description = description
-    factor.weight = weight
-    factor.prevalence = prevalence
-    factor.category = FactorCategory(category)
-    factor.image_url = image_url
-    factor.video_url = video_url
-    factor.publication_status = PublicationStatus.PUBLISHED
-    factor.formated_at = datetime.now(timezone(timedelta(hours=3)))
+    risk_factor.publication_status = PublicationStatus.PUBLISHED
+    risk_factor.formated_at = datetime.now(timezone(offset=timedelta(hours=3)))
 
     await session.commit()
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return risk_factor
+
+
+@risk_factor_router.post("factors/like", status_code=status.HTTP_204_NO_CONTENT)
+async def add_like(
+    risk_factor_id: int,
+    add_like: bool,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[int, Depends(get_user_id)],
+):
+    stmt = select(Like).where(and_(Like.user_id == user_id, Like.risk_factor_id == risk_factor_id))
+    res = await session.execute(stmt)
+    like = res.scalar_one_or_none()
+
+    if like is None and not add_like:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="нельзя отменить лайк, который еще не ставили")
+
+    if like is not None and add_like:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="нельзя дважды ставить лайк")
+
+    if add_like:
+        session.add(Like(user_id=user_id, risk_factor_id=risk_factor_id))
+    else:
+        await session.delete(like)
+
+    await session.commit()
