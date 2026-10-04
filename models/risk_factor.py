@@ -27,7 +27,7 @@ class RiskFactor(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
 
-    weight: Mapped[float] = mapped_column(Float, default=1, nullable=True)
+    weight: Mapped[float] = mapped_column(Float, default=1, nullable=False)
     prevalence: Mapped[int] = mapped_column(Integer, nullable=True)
     category: Mapped[FactorCategory] = mapped_column(
         PostgreSQLEnum(
@@ -54,5 +54,5 @@ class RiskFactor(Base):
     )
     formated_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    video_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(255), nullable=False)
+    video_url: Mapped[str | None] = mapped_column(String(255), nullable=False)
