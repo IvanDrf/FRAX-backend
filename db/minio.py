@@ -6,6 +6,7 @@ minio_client = Minio(
     endpoint=settings.MINIO_URL,
     access_key=settings.MINIO_USER,
     secret_key=settings.MINIO_PASSWORD,
+    secure=False,
 )
 
 
