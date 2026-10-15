@@ -2,7 +2,7 @@ from asyncio import gather
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path as Pathlib
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Path, Query, UploadFile, status
 from miniopy_async.api import Minio
@@ -14,7 +14,7 @@ from core.config import settings
 from db.minio import get_minio_client
 from db.session import get_db
 from models import Like, RiskFactor
-from models.risk_factor import FactorCategory, PublicationStatus
+from models.risk_factor import PublicationStatus
 
 
 def get_user_id() -> int:
@@ -42,10 +42,14 @@ async def get_risk_factors(
     stmt = stmt.group_by(RiskFactor.id)
 
     res = await session.execute(stmt)
-    result: list[dict[str, Any]] = []
+    result = []
 
     for row in res:
-        result.append({"risk_factor": row[0], "likes": row[1], "is_creator": row[0].creator_id == user_id})
+        risk_factor = row[0]
+        risk_factor.likes = row[1]
+        risk_factor.is_creator = row[0].creator_id == user_id
+
+        result.append(risk_factor)
 
     return result
 
@@ -95,7 +99,9 @@ async def get_risk_factor_info(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти фактор риска")
 
     risk_factor, likes, is_liked = res
-    return {"risk_factor": risk_factor, "likes": likes, "is_liked": is_liked}
+    risk_factor.likes = likes
+    risk_factor.is_liked = is_liked
+    return risk_factor
 
 
 @risk_factor_router.get("/factors/draft")
@@ -109,7 +115,7 @@ async def get_draft_factor(session: Annotated[AsyncSession, Depends(get_db)], us
     if risk_factor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти черновик")
 
-    return {"risk_factor": risk_factor}
+    return risk_factor
 
 
 BUCKET_NAME = "frax-bucket"
@@ -121,10 +127,6 @@ async def create_draft_factor(
     minio_client: Annotated[Minio, Depends(get_minio_client)],
     user_id: Annotated[int, Depends(get_user_id)],
     name: Annotated[str, Form()],
-    description: Annotated[str, Form()],
-    weight: Annotated[int, Form(ge=0, le=2)],
-    prevalence: Annotated[int | None, Form(ge=0, le=100)],
-    category: Annotated[FactorCategory, Form()],
     image: UploadFile,
     video: UploadFile,
 ):
@@ -139,27 +141,23 @@ async def create_draft_factor(
     )
 
     res = await session.execute(stmt)
-    factor = res.scalar_one_or_none()
-    if factor is None:
-        factor = RiskFactor()
+    risk_factor = res.scalar_one_or_none()
+    if risk_factor is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="черновик уже существует для этого пользователя")
 
-    factor.name = name
-    factor.description = description
-    factor.weight = weight
-    factor.prevalence = prevalence
-    factor.category = category
-    factor.creator_id = user_id
-    factor.image_url = ""
-    factor.video_url = ""
-    session.add(factor)
+    risk_factor = RiskFactor()
+    risk_factor.name = name
+    risk_factor.creator_id = user_id
+
+    session.add(risk_factor)
     await session.flush()
 
     image_name, video_name = (
-        generate_filename(factor.id, Pathlib(image.filename).suffix),
-        generate_filename(factor.id, Pathlib(video.filename).suffix),
+        generate_filename(risk_factor.id, Pathlib(image.filename).suffix),
+        generate_filename(risk_factor.id, Pathlib(video.filename).suffix),
     )
-    factor.image_url = generate_file_url(image_name)
-    factor.video_url = generate_file_url(video_name)
+    risk_factor.image_url = generate_file_url(image_name)
+    risk_factor.video_url = generate_file_url(video_name)
 
     try:
         image_content, video_content = await gather(*[image.read(), video.read()])
@@ -175,7 +173,7 @@ async def create_draft_factor(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="не удалось сохранить файлы")
 
     await session.commit()
-    return factor
+    return risk_factor
 
 
 @risk_factor_router.put("/factors/draft/{factor_id}", status_code=status.HTTP_200_OK)
@@ -183,6 +181,9 @@ async def publish_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
     user_id: Annotated[int, Depends(get_user_id)],
     factor_id: Annotated[int, Path()],
+    description: Annotated[str, Form()],
+    weight: Annotated[float, Form(ge=1, le=2)],
+    prevalence: Annotated[int, Form(ge=0, le=100)],
 ):
     stmt = select(RiskFactor).where(
         and_(
@@ -197,6 +198,9 @@ async def publish_factor(
     if risk_factor is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="не удалось найти черновик")
 
+    risk_factor.description = description
+    risk_factor.weight = weight
+    risk_factor.prevalence = prevalence
     risk_factor.publication_status = PublicationStatus.PUBLISHED
     risk_factor.formated_at = datetime.now(timezone(offset=timedelta(hours=3)))
 

@@ -8,12 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.base import Base
 
 
-class FactorCategory(Enum):
-    BINARY = "Бинарный"
-    NUMERIC = "Числовой"
-    CATEGORICAL = "Категориальный"
-
-
 class PublicationStatus(Enum):
     PUBLISHED = "published"
     DRAFT = "draft"
@@ -29,15 +23,7 @@ class RiskFactor(Base):
 
     weight: Mapped[float] = mapped_column(Float, default=1, nullable=False)
     prevalence: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    category: Mapped[FactorCategory] = mapped_column(
-        PostgreSQLEnum(
-            FactorCategory,
-            name="factor_category",
-            values_callable=lambda enum_cls: [e.value for e in enum_cls],
-        ),
-        default=FactorCategory.CATEGORICAL,
-        nullable=False,
-    )
+
     publication_status: Mapped[PublicationStatus] = mapped_column(
         PostgreSQLEnum(
             PublicationStatus,
