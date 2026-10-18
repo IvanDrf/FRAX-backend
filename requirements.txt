@@ -39,6 +39,7 @@ python-discovery==1.6.0
 python-dotenv==1.2.3
 python-multipart==0.0.32
 PyYAML==6.0.3
+redis==8.1.0
 ruff==0.16.6
 SQLAlchemy==2.0.54
 starlette==1.6.0

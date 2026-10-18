@@ -6,12 +6,14 @@ from uvicorn import run
 from api.risk_factors import risk_factor_router
 from api.users import user_router
 from db.minio import minio_client
+from db.redis import redis_client
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     yield
     await minio_client.close_session()
+    await redis_client.aclose()
 
 
 app = FastAPI(lifespan=lifespan)

@@ -10,16 +10,12 @@ from miniopy_async.error import MinioException
 from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.middleware import auth_middleware, strict_auth_middleware
 from core.config import settings
 from db.minio import get_minio_client
 from db.session import get_db
 from models import Like, RiskFactor
 from models.risk_factor import PublicationStatus
-
-
-def get_user_id() -> int:
-    return 1
-
 
 risk_factor_router = APIRouter(prefix="/api", tags=["frax"])
 
@@ -27,7 +23,7 @@ risk_factor_router = APIRouter(prefix="/api", tags=["frax"])
 @risk_factor_router.get("/factors")
 async def get_risk_factors(
     session: Annotated[AsyncSession, Depends(get_db)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int | None, Depends(auth_middleware)],
     risk_factor_weight: float | None = None,
 ):
     stmt = (
@@ -47,7 +43,7 @@ async def get_risk_factors(
     for row in res:
         risk_factor = row[0]
         risk_factor.likes = row[1]
-        risk_factor.is_creator = row[0].creator_id == user_id
+        risk_factor.is_creator = (row[0].creator_id == user_id) if user_id is not None else False
 
         result.append(risk_factor)
 
@@ -57,7 +53,7 @@ async def get_risk_factors(
 @risk_factor_router.delete("/factors/{risk_factor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_risk_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int, Depends(strict_auth_middleware)],
     risk_factor_id: Annotated[int, Path()],
 ):
     stmt = "UPDATE risk_factors SET publication_status = :new_status WHERE id = :id AND creator_id = :creator_id"
@@ -69,7 +65,7 @@ async def delete_risk_factor(
 @risk_factor_router.get("/factors/reels")
 async def get_risk_factor_info(
     session: Annotated[AsyncSession, Depends(get_db)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int | None, Depends(auth_middleware)],
     risk_factor_id: int | None = None,
     next_video: Annotated[bool, Query(alias="next")] = False,
 ):
@@ -105,7 +101,7 @@ async def get_risk_factor_info(
 
 
 @risk_factor_router.get("/factors/draft")
-async def get_draft_factor(session: Annotated[AsyncSession, Depends(get_db)], user_id: Annotated[int, Depends(get_user_id)]):
+async def get_draft_factor(session: Annotated[AsyncSession, Depends(get_db)], user_id: Annotated[int, Depends(strict_auth_middleware)]):
     stmt = (
         select(RiskFactor).where(and_(RiskFactor.creator_id == user_id, RiskFactor.publication_status == PublicationStatus.DRAFT)).limit(1)
     )
@@ -125,7 +121,7 @@ BUCKET_NAME = "frax-bucket"
 async def create_draft_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
     minio_client: Annotated[Minio, Depends(get_minio_client)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int, Depends(strict_auth_middleware)],
     name: Annotated[str, Form()],
     image: UploadFile,
     video: UploadFile,
@@ -179,7 +175,7 @@ async def create_draft_factor(
 @risk_factor_router.put("/factors/draft/{factor_id}", status_code=status.HTTP_200_OK)
 async def publish_factor(
     session: Annotated[AsyncSession, Depends(get_db)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int, Depends(strict_auth_middleware)],
     factor_id: Annotated[int, Path()],
     description: Annotated[str, Form()],
     weight: Annotated[float, Form(ge=1, le=2)],
@@ -213,7 +209,7 @@ async def add_like(
     risk_factor_id: int,
     add_like: bool,
     session: Annotated[AsyncSession, Depends(get_db)],
-    user_id: Annotated[int, Depends(get_user_id)],
+    user_id: Annotated[int, Depends(strict_auth_middleware)],
 ):
     stmt = select(Like).where(and_(Like.user_id == user_id, Like.risk_factor_id == risk_factor_id))
     res = await session.execute(stmt)

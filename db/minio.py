@@ -10,5 +10,5 @@ minio_client = Minio(
 )
 
 
-async def get_minio_client() -> Minio:
+def get_minio_client() -> Minio:
     return minio_client
